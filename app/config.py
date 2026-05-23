@@ -1,0 +1,43 @@
+"""Application configuration loaded from environment variables."""
+
+from functools import lru_cache
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    """Central configuration for the finance pipeline.
+
+    Values are loaded from a `.env` file and can be overridden by
+    real environment variables.
+    """
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+    )
+
+    # --- Ollama (local SLM) ---
+    ollama_base_url: str = "http://localhost:11434"
+    ollama_model: str = "phi3:mini"
+
+    # --- Groq (cloud LLM) ---
+    groq_api_key: str = ""
+    groq_model: str = "llama3-70b-8192"
+
+    # --- Routing ---
+    confidence_threshold: float = 0.6
+
+    # --- Timeouts ---
+    slm_timeout_sec: int = 30
+    llm_timeout_sec: int = 60
+
+
+@lru_cache(maxsize=1)
+def get_settings() -> Settings:
+    """Return a cached :class:`Settings` instance.
+
+    Using ``lru_cache`` ensures the `.env` file is read only once
+    per process lifetime.
+    """
+    return Settings()

@@ -1,7 +1,8 @@
 """Prompt construction for financial analysis tasks.
 
 Maps task types to specialised system prompts and wraps user-supplied
-financial text into a clean user prompt.
+financial text into a clean user prompt.  Optionally weaves in RAG
+context chunks retrieved from the document store.
 """
 
 TASK_PROMPTS: dict[str, str] = {
@@ -38,16 +39,35 @@ _DEFAULT_SYSTEM_PROMPT = (
 )
 
 
-def build_prompt(task_type: str, financial_text: str) -> tuple[str, str]:
+def build_prompt(
+    task_type: str,
+    financial_text: str,
+    context_chunks: list[str] | None = None,
+) -> tuple[str, str]:
     """Build system and user prompts for a given financial analysis task.
 
     Args:
         task_type: The category of analysis (e.g. ``"summarization"``).
         financial_text: Raw financial text to analyse.
+        context_chunks: Optional list of RAG-retrieved context chunks to
+            prepend to the user prompt for additional context.
 
     Returns:
         A ``(system_prompt, user_prompt)`` tuple ready for model consumption.
     """
     system_prompt = TASK_PROMPTS.get(task_type.lower(), _DEFAULT_SYSTEM_PROMPT)
-    user_prompt = f"Financial text for analysis:\n\n{financial_text}"
+
+    parts: list[str] = []
+
+    # Inject RAG context if available.
+    if context_chunks:
+        parts.append("Relevant context from prior financial documents:")
+        for i, chunk in enumerate(context_chunks, 1):
+            parts.append(f"\n--- Context {i} ---")
+            parts.append(chunk)
+        parts.append("\n--- End of context ---\n")
+
+    parts.append(f"Financial text for analysis:\n\n{financial_text}")
+
+    user_prompt = "\n".join(parts)
     return system_prompt, user_prompt

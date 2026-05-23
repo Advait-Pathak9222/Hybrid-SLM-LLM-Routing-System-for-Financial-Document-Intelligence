@@ -7,6 +7,7 @@ import httpx
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.document_routes import document_router
 from app.api.middleware import RequestTimingMiddleware
 from app.api.routes import router
 from app.config import get_settings
@@ -20,9 +21,9 @@ logger = get_logger(__name__)
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     """Run startup checks and log lifecycle events."""
     logger.info("Finance pipeline starting up …")
+    settings = get_settings()
 
     # Best-effort Ollama connectivity check
-    settings = get_settings()
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             resp = await client.get(f"{settings.ollama_base_url}/api/tags")
@@ -34,6 +35,31 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
             "Ollama not reachable (%s) — SLM requests will fail until it's running",
             exc,
         )
+
+    # Initialise ChromaDB document store (if RAG is enabled)
+    if settings.rag_enabled:
+        try:
+            from app.services.document_store import init_document_store
+
+            init_document_store(persist_dir=settings.chroma_persist_dir)
+            logger.info("ChromaDB document store initialised | dir=%s", settings.chroma_persist_dir)
+        except Exception as exc:
+            logger.warning(
+                "ChromaDB init failed (%s) — RAG will be unavailable", exc
+            )
+    else:
+        logger.info("RAG is disabled — skipping ChromaDB initialisation")
+
+    # Initialise cache with configured settings
+    from app.services.cache import response_cache
+
+    response_cache._max_size = settings.cache_max_size
+    response_cache._ttl = settings.cache_ttl_seconds
+    logger.info(
+        "Response cache configured | max_size=%d  ttl=%ds",
+        settings.cache_max_size,
+        settings.cache_ttl_seconds,
+    )
 
     yield
     logger.info("Finance pipeline shutting down …")
@@ -52,9 +78,10 @@ def create_app() -> FastAPI:
             "Intelligent routing layer that directs financial analysis tasks "
             "to a local SLM (Phi-3 Mini via Ollama) for simple tasks or a "
             "cloud LLM (Llama 3 70B via Groq) for complex ones, with "
-            "automatic confidence-based fallback."
+            "automatic confidence-based fallback, response caching, cost "
+            "tracking, and RAG-powered document retrieval."
         ),
-        version="1.0.0",
+        version="2.0.0",
         lifespan=lifespan,
     )
 
@@ -70,6 +97,7 @@ def create_app() -> FastAPI:
 
     # Routes
     application.include_router(router)
+    application.include_router(document_router)
 
     # Metrics endpoint
     @application.get("/metrics", tags=["observability"])
@@ -81,4 +109,3 @@ def create_app() -> FastAPI:
 
 
 app = create_app()
-

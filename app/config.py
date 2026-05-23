@@ -32,6 +32,15 @@ class Settings(BaseSettings):
     slm_timeout_sec: int = 30
     llm_timeout_sec: int = 60
 
+    # --- Cache ---
+    cache_max_size: int = 128
+    cache_ttl_seconds: int = 300
+
+    # --- RAG / ChromaDB ---
+    chroma_persist_dir: str = "./chroma_data"
+    rag_default_top_k: int = 3
+    rag_enabled: bool = True
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

@@ -39,3 +39,6 @@ coverage.xml
 
 # mypy
 .mypy_cache/
+
+# ChromaDB
+chroma_data/

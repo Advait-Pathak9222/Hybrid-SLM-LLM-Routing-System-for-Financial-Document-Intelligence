@@ -119,6 +119,9 @@ finance_pipeline/
 │       ├── timer.py             # Async timing context manager
 │       └── metrics.py           # In-memory pipeline metrics (with cache + cost tracking)
 │
+├── ui/
+│   └── app.py                   # Streamlit UI (analyze, documents, metrics)
+│
 ├── tests/
 │   ├── test_api.py              # API integration tests (5 tests)
 │   ├── test_classifier.py       # Task classification tests (7 tests)
@@ -280,6 +283,19 @@ docker compose up --build
 # 3. Pull the SLM model (first time only)
 docker exec finance-pipeline-ollama ollama pull phi3:mini
 ```
+
+### Streamlit UI
+
+```bash
+# In a separate terminal (backend must be running):
+source .venv/bin/activate
+streamlit run ui/app.py
+```
+
+The UI opens at `http://localhost:8501` with three pages:
+- **Analyze** — Input financial text, choose task type, toggle RAG, see results with metrics
+- **Documents** — Ingest text or upload PDF/text files, search documents, manage the store
+- **Metrics** — Live dashboard of request counts, cache performance, and cost tracking
 
 ---
 

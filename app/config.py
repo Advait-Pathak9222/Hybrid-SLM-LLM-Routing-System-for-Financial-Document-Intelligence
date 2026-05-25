@@ -23,7 +23,7 @@ class Settings(BaseSettings):
 
     # --- Groq (cloud LLM) ---
     groq_api_key: str = ""
-    groq_model: str = "llama3-70b-8192"
+    groq_model: str = "llama-3.3-70b-versatile"
 
     # --- Routing ---
     confidence_threshold: float = 0.6
